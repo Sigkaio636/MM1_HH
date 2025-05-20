@@ -77,7 +77,32 @@ A dynamical system consists of a set of variables that describe its state and a 
 
 ## Phase space
 
+As a start, let us consider a quiescent neuron whose membrane potential is resting. From the dynamical systems point of view, there are no changes of the state variables of such a neuron; hence it is at an equilibrium point. All the inward currents that depolarize the neuron are balanced, or equilibrated, by the outward currents that hyperpolarize it. If the neuron remains quiescent despite small disturbances and membrane noise, as in Fig.1.9a (top), then we conclude that the equilibrium is stable.
 
+A fundamental property of neurons is excitability, illustrated in Fig.1.9b. The neuron is resting, i.e., its phase portrait has a stable equilibrium. Small perturbations, such as A, result in small excursions from the equilibrium, denoted as PSP (postsynaptic potential). Larger perturbations, such as B, are amplified by the neuron’s intrinsic dynamics and result in the spike response
+
+![image](https://github.com/user-attachments/assets/1926ac3d-401c-4766-9ffb-aa1f8783b200)
+
+Now suppose that the magnitude of the injected current is a parameter that we can control. Each cell in the figure is quiescent at the beginning of the ramps, so its phase portrait has a stable equilibrium and it may look like the one in Fig.1.9a or Fig.1.9b. Then it starts to fire tonic spikes, so its phase portrait has a limit cycle attractor and it may look like the one in Fig.1.9c, with a white circle denoting an unstable resting equilibrium. Apparently there is some intermediate level of injected current that corresponds to the transition from resting to sustained spiking, i.e., from the phase portrait in Fig.1.9b to Fig.1.9c.
+
+From the dynamical systems point of view, the transition corresponds to a bifurcation of neuron dynamics, i.e., a qualitative change of phase portrait of the system. For example, there is no bifurcation going from the phase portrait in Fig.1.9a to that in Fig.1.9b, since both have one globally stable equilibrium; the difference in behavior is quantitative but not qualitative. In contrast, there is a bifurcation going from Fig.1.9b to Fig.1.9c, since the equilibrium is no longer stable and another attractor, limit cycle, has appeared. The neuron is not excitable in Fig.1.9a but it is in Fig.1.9b, simply because the former phase portrait is far from the bifurcation and the latter is near.
+
+In general, neurons are excitable because they are near bifurcations from resting to spiking activity, so the type of the bifurcation determines the excitable properties of the neuron. Of course, the type depends on the neuron’s electrophysiology. An amazing observation is that there could be millions of different electrophysiological mechanisms of excitability and spiking, but there are only four – yes, four – different types of bifurcations of equilibrium that a system can undergo without any additional constraints, such as symmetry. Thus, considering these four bifurcations in a general setup, we can understand excitable properties of many models, even those that have not been invented yet. What is even more amazing, we can understand excitable properties of neurons whose currents are not measured and whose models are not known, provided we can experimentally identify which of the four bifurcations the resting state of the neuron undergoes.
+
+![image](https://github.com/user-attachments/assets/f8493918-497e-4f9d-bd87-825c2f6a1e97)
+
+![image](https://github.com/user-attachments/assets/777db0ea-a38b-408b-ba77-2041fee70bf0)
+
+* Saddle-node bifurcation. As the magnitude of the injected current or any other bifurcation parameter changes, a stable equilibrium corresponding to the resting state (black circle marked “node” in Fig.1.12a) is approached by an unstable equilibrium (white circle marked “saddle”); they coalesce and annihilate each other, as in Fig.1.12a (middle). Since the resting state no longer exists, the trajectory describing the evolution of the system jumps to the limit cycle attractor, indicating that the neuron starts to fire tonic spikes. Notice that the limit cycle, or some other attractor, must coexist with the resting state in order for the transition resting → spiking to occur.
+* Saddle-node on invariant circle bifurcation is similar to the saddle-node bifurcation except that there is an invariant circle at the moment of bifurcation, which then becomes a limit cycle attractor, as in Fig.1.12b.
+* Subcritical Andronov-Hopf bifurcation. A small unstable limit cycle shrinks to a stable equilibrium and makes it lose stability, as in Fig.1.12c. Because of instabilities, the trajectory diverges from the equilibrium and approaches a largeamplitude spiking limit cycle or some other attractor.
+* Supercritical Andronov-Hopf bifurcation. The stable equilibrium loses stability and gives birth to a small-amplitude limit cycle attractor, as in Fig.1.12d. As the magnitude of the injected current increases, the amplitude of the limit cycle increases and it becomes a full-size spiking limit cycle.
+
+Systems undergoing Andronov-Hopf bifurcations, whether subcritical or supercritical, exhibit damped oscillations of membrane potential, whereas systems near saddlenode
+bifurcations, whether on or off an invariant circle, do not. The existence of small amplitude oscillations creates the possibility of resonance to the frequency of the
+incoming pulses, as in Fig.1.7, and other interesting features. We refer to neurons with damped subthreshold oscillations as resonators and to those that do not have this property as integrators.
+
+![image](https://github.com/user-attachments/assets/6ca7841a-fd79-4543-99a7-d151511c6ca9)
 
 ## The model, Ionic Currents
 
@@ -111,3 +136,11 @@ The complete set of space-clamped Hodgkin-Huxley equations is
 ![image](https://github.com/user-attachments/assets/f641f6b8-c811-4dc3-bb79-daddbad9309a)
 
 ![image](https://github.com/user-attachments/assets/ac597262-88c1-41b7-8f30-47aaf42a8042)
+
+### Reduced HH-model
+
+The Hodgkin-Huxley model has four independent variables. Early computer simulations by Krinskii and Kokoz (1973) have shown that there is a relationship between the gating variables n(t) and h(t), namely, n(t) + h(t) ≈ 0.84
+
+We can use this relationship in the voltage equation to reduce the Hodgkin-Huxley model to a three-dimensional system. If, in addition, we assume that the activation kinetics of the Na+ current is instantaneous, that is, m = m∞(V ), then the Hodgkin-Huxley model can be reduced to the two-dimensional system whose solutions retain qualitative and some quantitative agreement with the original four-dimensional Hodgkin-Huxley system.
+
+![image](https://github.com/user-attachments/assets/d0227478-4e88-4df0-b1fb-5507ac5de57c)
