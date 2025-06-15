@@ -1,10 +1,13 @@
+close all
+I =  0;
 
-I = -5;
-
-V_space = linspace(-15, 15);
+V_space = linspace(-100, 100, 10000);
 n_space = linspace(1e-4, 1 - 1e-4, 1000);
 
-ninf = @(V) 1 ./ (1 + exp((-53 - V) / 15));
+an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
+bn = @(V) 0.125 * exp(-V / 80);
+ninf = @(V) an(V)./(an(V)+bn(V));
+% ninf = @(V) 1./(1+exp((-53 -V)/15 ));
 
 % Las isoclinas!
 
@@ -30,17 +33,33 @@ end
 
 % El PEQ
 eq = @(V) HHredu1_V([V, ninf(V), I]);
-[V_PEQ, ~, it] = secant(10, -10, 1e-8, 1000, eq);
+
+testcurve = [];
+for v = V_space
+    testcurve = [testcurve eq(v)];
+end
+figure()
+hold on; axis on; 
+plot(V_space, testcurve)
+plot(V_space, 0*testcurve )
+hold off;
+
+[V_PEQ_arr, ~, it] = secant(-10, 0, 1e-8, 1000, eq);
 disp(it)
+V_PEQ = V_PEQ_arr(end)
+V_test = V_PEQ;
+HHredu1_V([V_test, ninf(V_test), I])
+
 
 % La Jacobiana
-tol = 1e-8
+tol = 1e-8;
 jacobiana = zeros(2);
-jacobiana(1, 1) = diff(@(x) HHredu1_V(x), [V_PEQ(end), ninf(V_PEQ(end)), I], [tol, 0, 0]);
-jacobiana(1, 2) = diff(@(x) HHredu1_V(x), [V_PEQ(end), ninf(V_PEQ(end)), I], [0, tol, 0]);
-jacobiana(2, 1) = diff(@(x) HHredu1_n(x), [V_PEQ(end), ninf(V_PEQ(end)), I], [tol, 0, 0]);
-jacobiana(2, 2) = diff(@(x) HHredu1_n(x), [V_PEQ(end), ninf(V_PEQ(end)), I], [0, tol, 0]);
+jacobiana(1, 1) = diff(@(x) HHredu1_V(x), [V_PEQ, ninf(V_PEQ), I], [tol, 0, 0]);
+jacobiana(1, 2) = diff(@(x) HHredu1_V(x), [V_PEQ, ninf(V_PEQ), I], [0, tol, 0]);
+jacobiana(2, 1) = diff(@(x) HHredu1_n(x), [V_PEQ, ninf(V_PEQ), I], [tol, 0, 0]);
+jacobiana(2, 2) = diff(@(x) HHredu1_n(x), [V_PEQ, ninf(V_PEQ), I], [0, tol, 0]);
 jacobiana
+eig(jacobiana)
 
 figure()
 grid on; hold on; axis tight
@@ -52,6 +71,14 @@ legend()
 plot(n_space, V_ninf, "DisplayName", "Isoclina dndt = 0")
 plot(n_space, V_isoclina, "DisplayName", "Isoclina dVdt = 0")
 plot(ninf(V_PEQ(end)), V_PEQ(end), "-o", "DisplayName", "PEQ")
+
+% Draw a trajectory
+xr0 = [0.05; 0.32; I]; % Initial state <- Play changing the intensity
+tspan = [0 50];
+[tr, xr] = ode45(@HHredu1, tspan, xr0); 
+plot(xf(:,2), xf(:,1), "-", "DisplayName", "Trajectory")
+plot(xf(1,2), xf(1,1), "-o", "DisplayName", "Start trajectory")
+
 
 function [xk, ek, it] = bisection(a, b, tol, itmax, f)
     it = 0;
@@ -118,8 +145,7 @@ function dVdt = HHredu1_V(x)
     % Membrane capacitance and currents
     C = 1;  % µF/cm^2
 
-    %am = @(V) 0.1 * vtrap(25 - V, 10);
-    am = @(V) 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
     bm = @(V) 4 * exp(-V / 18);
 
     v = x(1);
@@ -146,16 +172,12 @@ function dndt = HHredu1_n(x)
     C = 1;  % µF/cm^2
 
     % Opening and closing rates
-    % Helper function to handle removable singularities in gating variables
-    vtrap = @(x, y) (abs(x ./ y) < 1e-6) .* (y .* (1 - x ./ y / 2)) + ...
-                    (abs(x ./ y) >= 1e-6) .* (x ./ (exp(x ./ y) - 1)) + ...
-                    (abs(x ./ y) < 1e-6 & abs(x) < 1e-6) .* (1e-6);  % Avoid extremely small values
-    
+
     %an = @(V) 0.01 * vtrap(10 - V, 10);
-    an = @(V) 0.01 * (10 - V) ./ (exp(1 - V / 10) - 1);
+    an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
     bn = @(V) 0.125 * exp(-V / 80);
     %am = @(V) 0.1 * vtrap(25 - V, 10);
-    am = @(V) 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
     bm = @(V) 4 * exp(-V / 18);
 
 
@@ -166,7 +188,7 @@ function dndt = HHredu1_n(x)
 
     % Hypothesis reduction. 
     minf = am(v) ./ (am(v) + bm(v));
-    hreg = (0.8882 - 1.04 * n);
+    hreg = (0.8882 - 1.041 * n);
 
     dndt = an(v).*(1-n) - bn(v).*n;
 end
