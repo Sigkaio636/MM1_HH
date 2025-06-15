@@ -20,9 +20,9 @@ for i = 1:1000
     x = @(V) [V, n_space(1001 - i), I];
     eq = @(V) HHredu1_V(x(V));
     if i == 1
-        [res, ~, it] = secant(-15, 100, 1e-8, 1000, eq);
+        [res, ~, it] = bisection(-15, 100, 1e-8, 1000, eq);
     else
-        [res, ~, it] = secant(V_isoclina(1002 - i) - 0.5, V_isoclina(1002 - i) + 0.5, 1e-8, 1000, eq);
+        [res, ~, it] = bisection(V_isoclina(1002 - i) - 1, V_isoclina(1002 - i, 1e-8, 1000, eq);
     end
     disp(it)
     V_isoclina(1001 - i) = res(end);
