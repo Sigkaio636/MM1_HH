@@ -24,8 +24,10 @@ function dxdt = HHredu1(t, x)
     bm = @(V) 4 * exp(-V / 18);
 
 
-    v=x(1); n=x(2); i=x(3);
-    dxdt = zeros(3,1);
+    v = x(1);
+    n = x(2);
+    i = x(3);
+    dxdt = zeros(3, 1);
 
     % Hypothesis reduction. 
     minf = am(v) ./ (am(v) + bm(v));

@@ -1,0 +1,172 @@
+
+I = -5;
+
+V_space = linspace(-15, 15);
+n_space = linspace(1e-4, 1 - 1e-4, 1000);
+
+ninf = @(V) 1 ./ (1 + exp((-53 - V) / 15));
+
+% Las isoclinas!
+
+V_ninf = zeros(1000, 1);
+for i = 1:1000
+    eq = @(V) ninf(V) - n_space(i);
+    [res, ~, it] = bisection(-200, 200, 1e-8, 1000, eq);
+    % [res, ~, it] = newton(0.5, 1e-4, 1000, eq);
+    disp(it)
+    V_ninf(i) = res(end);
+end
+
+V_isoclina = zeros(1000, 1);
+for i = 1:1000
+    x = @(V) [V, n_space(1001 - i), I];
+    eq = @(V) HHredu1_V(x(V));
+    if i == 1
+        [res, ~, it] = secant(-15, 100, 1e-8, 1000, eq);
+    else
+        [res, ~, it] = secant(V_isoclina(1002 - i) - 0.5, V_isoclina(1002 - i) + 0.5, 1e-8, 1000, eq);
+    end
+    disp(it)
+    V_isoclina(1001 - i) = res(end);
+end
+
+% El PEQ
+eq = @(V) HHredu1_V([V, ninf(V), I]);
+[V_PEQ, ~, it] = secant(10, -10, 1e-8, 1000, eq);
+disp(it)
+
+% La Jacobiana
+jacobiana = zeros(2);
+jacobiana(1, 1) = diff(@dVdt, [V_PEQ, ninf(V_PEQ), I], [1e-6, 0, 0]);
+jacobiana(1, 1) = diff(@dVdt, [V_PEQ, ninf(V_PEQ), I], [0, 1e-6, 0]);
+jacobiana(1, 1) = diff(@dndt, [V_PEQ, ninf(V_PEQ), I], [1e-6, 0, 0]);
+jacobiana(1, 1) = diff(@dndt, [V_PEQ, ninf(V_PEQ), I], [0, 1e-6, 0]);
+
+figure()
+grid on; hold on; axis tight
+ylim([-150, 150])
+title("Isoclinas")
+xlabel("Proporción de cosas")
+ylabel("Voltaje")
+legend()
+plot(n_space, V_ninf, "DisplayName", "Isoclina dndt = 0")
+plot(n_space, V_isoclina, "DisplayName", "Isoclina dVdt = 0")
+plot(ninf(V_PEQ(end)), V_PEQ(end), "-o", "DisplayName", "PEQ")
+
+function [xk, ek, it] = bisection(a, b, tol, itmax, f)
+    it = 0;
+    tolk = Inf;
+    xk = (a + b) ./ 2;
+
+    while it < itmax && tolk >= tol
+        if f(a) * f(xk(end)) < 0
+            b = xk(end);
+        else
+            a = xk(end);
+        end
+        xk = [xk (a + b) ./ 2];
+        tolk = abs(xk(end) - xk(end-1));
+        it = it + 1;
+    end
+
+    ek = xk(1:end - 1) - xk(end);
+end
+
+function [xk, ek, it] = newton(x0, tol, itmax, f)
+    it = 0;
+    tolk = Inf;
+    xk = x0;
+    while it < itmax && tolk >= tol
+        xk = [xk, xk(end) - f(xk(end)) / diff(xk(end), f, 1e-8)];
+        tolk = abs(xk(end) - xk(end-1));
+        it = it + 1;
+    end
+    ek = xk(1:end - 1) - xk(end);
+end
+
+function [xk, ek, it] = secant(a, b, tol, itmax, f)
+    it = 0;
+    tolk = Inf;
+    xk = [a, b];
+    fk_1 = f(a); fk_0 = f(b);
+
+    while it < itmax && tolk >= tol
+        xk = [xk, xk(end) - (xk(end) - xk(end-1)) ./ (fk_0 - fk_1) .* fk_0];
+        tolk = abs(xk(end) - xk(end-1));
+        it = it + 1;
+        fk_1 = fk_0;
+        fk_0 = f(xk(end));
+    end
+
+    xk = xk(2:end);
+    ek = xk(1:end - 1) - xk(end);
+end
+
+function result = diff (x0, f, h)
+    result = (f(x0 + h) - f(x0)) ./ norm(h);
+end
+
+function dVdt = HHredu1_V(x)
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+    %am = @(V) 0.1 * vtrap(25 - V, 10);
+    am = @(V) 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    bm = @(V) 4 * exp(-V / 18);
+
+    v = x(1);
+    n = x(2);
+    i = x(3);
+
+    % Hypothesis reduction. 
+    minf = am(v) ./ (am(v) + bm(v));
+    hreg = (0.8882 - 1.04 * n);
+
+    dVdt = (i - gK * n.^4 .* (v - EK) - gNa * minf.^3 .*hreg .* (v - ENa) - gL * (v - EL)) / C ;
+end
+
+function dndt = HHredu1(t, x)
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+    % Opening and closing rates
+    % Helper function to handle removable singularities in gating variables
+    vtrap = @(x, y) (abs(x ./ y) < 1e-6) .* (y .* (1 - x ./ y / 2)) + ...
+                    (abs(x ./ y) >= 1e-6) .* (x ./ (exp(x ./ y) - 1)) + ...
+                    (abs(x ./ y) < 1e-6 & abs(x) < 1e-6) .* (1e-6);  % Avoid extremely small values
+    
+    %an = @(V) 0.01 * vtrap(10 - V, 10);
+    an = @(V) 0.01 * (10 - V) ./ (exp(1 - V / 10) - 1);
+    bn = @(V) 0.125 * exp(-V / 80);
+    %am = @(V) 0.1 * vtrap(25 - V, 10);
+    am = @(V) 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    bm = @(V) 4 * exp(-V / 18);
+
+
+    v = x(1);
+    n = x(2);
+    i = x(3);
+    dxdt = zeros(3, 1);
+
+    % Hypothesis reduction. 
+    minf = am(v) ./ (am(v) + bm(v));
+    hreg = (0.8882 - 1.04 * n);
+
+    dndt = an(v).*(1-n) - bn(v).*n;
+end
