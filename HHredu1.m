@@ -29,7 +29,7 @@ function dxdt = HHredu1(t, x)
 
     % Hypothesis reduction. 
     minf = am(v) ./ (am(v) + bm(v));
-    hreg = (0.8882 - 1.04 * n);
+    hreg = (0.8882 - 1.041 * n);
 
     dxdt(1) = (i - gK * n.^4 .* (v - EK) - gNa * minf.^3 .*hreg .* (v - ENa) - gL * (v - EL)) / C ;
     dxdt(2) = an(v).*(1-n) - bn(v).*n;

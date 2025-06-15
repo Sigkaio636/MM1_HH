@@ -1,8 +1,8 @@
 %% Test the reduction hypothesis for model 1
 close all
 %% Compare trajectories 
-x0 = [0.05; 0.32; 0.05; 0.59; 4]; % Initial state <- Play changing the intensity
-tspan = [0 25];
+x0 = [0.05; 0.32; 0.05; 0.59; 10]; % Initial state <- Play changing the intensity
+tspan = [0 50];
 [tf, xf] = ode45(@HHfull1, tspan, x0); % Solve for trajectory for full model
 xr0 = [x0(1); x0(2); x0(5)]; 
 [tr, xr] = ode45(@HHredu1, tspan, xr0); % Solve for trajectory for reduced model
@@ -10,8 +10,8 @@ xr0 = [x0(1); x0(2); x0(5)];
 % Compare trajectories graphically
 figure(1)
 plot(tf, xf(:,1), 'b-', tr, xr(:,1), 'b--');
-xlabel('Time');
-ylabel('Action Potential');
+xlabel('Time t ');
+ylabel('Action Potential V');
 
 am = @(V) 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
 bm = @(V) 4 * exp(-V / 18);
@@ -20,8 +20,8 @@ minf =@(V) am(V) ./ (am(V) + bm(V));
 figure(2)
 hold on; 
 plot(tf, xf(:,2), 'r-', tf, xf(:,3), 'g-', tf, xf(:,4), 'b-');
-plot(tr, xr(:,2), 'r--', tr, minf(xr(:,1)), 'g--', tr, (0.89 - 1.1 * xr(:,2)), 'b--');
-xlabel('Time');
+plot(tr, xr(:,2), 'r--', tr, minf(xr(:,1)), 'g--', tr, (0.8882 - 1.041 * xr(:,2)), 'b--');
+xlabel('Time t');
 ylabel('Gate activation');
 
 % We can see that qualitatively they behave quite similar

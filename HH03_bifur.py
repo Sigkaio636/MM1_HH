@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
 from scipy.integrate import solve_ivp
-from scipy import stats
-from scipy import optimize
-from matplotlib.backend_bases import MouseButton
+from scipy.signal import find_peaks
 
 """
 Display the evolution of the limiting behavior 
@@ -39,26 +36,13 @@ C = 1  # µF/cm^2
 I0 = 0  # µA/cm^2
 
 
-# Visualization of phase portrait
-nd = lambda n, v: an(v) * (1 - n) - bn(v) * n
-Vd = (
-    lambda n, v, i: (
-        i
-        - gK * n**4 * (v - EK)
-        - gNa * minf(v) ** 3 * (0.89 - 1.1 * n) * (v - ENa)
-        - gL * (v - EL)
-    )
-    / C
-)
-
-
 def reducHH(t, state):
     V, n, I = state
     return [
         (
             I
             - gK * n**4 * (V - EK)
-            - gNa * minf(V) ** 3 * (0.89 - 1.1 * n) * (V - ENa)
+            - gNa * minf(V) ** 3 * (0.8882 - 1.041 * n) * (V - ENa)
             - gL * (V - EL)
         )
         / C,
@@ -67,19 +51,55 @@ def reducHH(t, state):
     ]
 
 
-fig = plt.figure(figsize=(8, 8))
-ax = fig.add_subplot(1, 1, 1, projection="3d")
+fig = plt.figure(figsize=(16, 7))
+axdyn = fig.add_subplot(1, 2, 1, projection="3d")
+axFre = fig.add_subplot(1, 2, 2)
+Fre_list = []
+I_ = np.arange(-5, 20, 0.25)
 
-for i in range(0, 100, 1):
-    I = i / 5
-    s0 = [20, 0.2, I]
+for i in I_:
+    s0 = [20, 0.2, i]
     sol = solve_ivp(reducHH, [0, 1000], s0, dense_output=True)
-    t = np.linspace(950, 1000, 500)
+    # t = np.linspace(950, 1000, 1000)
+    t = np.linspace(500, 1000, 5000)
     s = sol.sol(t)
-    ax.plot(s[0], s[1], [i] * len(t), c="k", alpha=0.3)
+    axdyn.plot(s[0], s[1], [i] * len(t), c="k", alpha=0.3)
 
-ax.set_xlabel("V")
-ax.set_ylabel("n")
-ax.set_zlabel("I")
+    spectrum = np.abs(np.fft.fft(s[0][1:]))
+    peaks, properties = find_peaks(spectrum, height=np.max(spectrum) / 2)
+
+    k = 0 if len(peaks) == 0 else peaks[0]
+    Fs = k / (t[-1] - t[0])
+    Fre_list.append(Fs)
+
+axdyn.set_xlabel("V", fontsize=14)
+axdyn.set_ylabel("n", fontsize=14)
+axdyn.set_zlabel("I", fontsize=14)
+
+axFre.plot(I_, Fre_list, "--o")
+axFre.set_xlabel("Intensity density µA/cm^2")
+axFre.set_ylabel("Fundamental frequency Hz")
 
 plt.show()
+"""
+
+I = 10 / 5
+s0 = [20, 0.2, I]
+sol = solve_ivp(reducHH, [0, 1000], s0, dense_output=True)
+t = np.linspace(600, 1000, 4000)
+s = sol.sol(t)
+
+spectrum = np.abs(np.fft.fft(s[0][1:]))
+
+plt.plot(s[0])
+plt.show()
+plt.plot(spectrum)
+plt.show()
+
+peaks, properties = find_peaks(spectrum, height=np.max(spectrum) / 2)
+print(peaks, properties)
+
+k = 0 if not peaks else peaks[0]
+Fs = k / (t[-1] - t[0])
+print(k, Fs)
+"""
