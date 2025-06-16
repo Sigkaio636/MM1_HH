@@ -1,5 +1,5 @@
 close all
-I =  0;
+I = 3.7;
 
 V_space = linspace(-100, 100, 10000);
 n_space = linspace(1e-4, 1 - 1e-4, 1000);
@@ -52,7 +52,7 @@ HHredu1_V([V_test, ninf(V_test), I])
 
 
 % La Jacobiana
-tol = 1e-8;
+tol = 1e-4;
 jacobiana = zeros(2);
 jacobiana(1, 1) = diff(@(x) HHredu1_V(x), [V_PEQ, ninf(V_PEQ), I], [tol, 0, 0]);
 jacobiana(1, 2) = diff(@(x) HHredu1_V(x), [V_PEQ, ninf(V_PEQ), I], [0, tol, 0]);
@@ -73,11 +73,11 @@ plot(n_space, V_isoclina, "DisplayName", "Isoclina dVdt = 0")
 plot(ninf(V_PEQ(end)), V_PEQ(end), "-o", "DisplayName", "PEQ")
 
 % Draw a trajectory
-xr0 = [0.05; 0.32; I]; % Initial state <- Play changing the intensity
+xr0 = [50; 0.5; I]; % Initial state <- Play changing the intensity
 tspan = [0 50];
 [tr, xr] = ode45(@HHredu1, tspan, xr0); 
-plot(xf(:,2), xf(:,1), "-", "DisplayName", "Trajectory")
-plot(xf(1,2), xf(1,1), "-o", "DisplayName", "Start trajectory")
+plot(xr(:,2), xr(:,1), "-", "DisplayName", "Trajectory")
+plot(xr(1,2), xr(1,1), "-o", "DisplayName", "Start trajectory")
 
 
 function [xk, ek, it] = bisection(a, b, tol, itmax, f)
@@ -130,7 +130,7 @@ function [xk, ek, it] = secant(a, b, tol, itmax, f)
 end
 
 function result = diff (f, x0, h)
-    result = (f(x0 + h) - f(x0)) ./ norm(h);
+    result = (f(x0 + h / 2) - f(x0 - h / 2)) ./ norm(h);
 end
 
 function dVdt = HHredu1_V(x)

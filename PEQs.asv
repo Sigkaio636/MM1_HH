@@ -1,5 +1,5 @@
 close all
-I =  5.43;
+I =  ;
 
 V_space = linspace(-100, 100, 10000);
 n_space = linspace(1e-4, 1 - 1e-4, 1000);
@@ -76,6 +76,8 @@ plot(ninf(V_PEQ(end)), V_PEQ(end), "-o", "DisplayName", "PEQ")
 xr0 = [0.05; 0.32; I]; % Initial state <- Play changing the intensity
 tspan = [0 50];
 [tr, xr] = ode45(@HHredu1, tspan, xr0); 
+plot(xr(:,2), xr(:,1), "-", "DisplayName", "Trajectory")
+plot(xr(1,2), xr(1,1), "-o", "DisplayName", "Start trajectory")
 
 
 function [xk, ek, it] = bisection(a, b, tol, itmax, f)
