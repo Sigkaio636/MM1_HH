@@ -1,0 +1,102 @@
+close all
+an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
+bn = @(V) 0.125 * exp(-V / 80);
+ninf = @(V) an(V)./(an(V)+bn(V));
+
+V_space = linspace(-50, 50, 10000);
+
+% El PEQ
+eq = @(V, I) HHredu1_V([V, ninf(V), I]);
+figure()
+hold on; axis on; 
+
+for i = -20:10:40
+    testcurve = [];
+    for v = V_space
+        testcurve = [testcurve eq(v, i)];
+    end
+    plot(V_space, testcurve, DisplayName=int2str(i))
+end
+plot(V_space, 0*testcurve, '--', DisplayName="zero")
+legend()
+hold off;
+
+function dVdt = HHredu1_V(x)
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+    am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    bm = @(V) 4 * exp(-V / 18);
+
+    v = x(1);
+    n = x(2);
+    i = x(3);
+
+    % Hypothesis reduction. 
+    minf = am(v) ./ (am(v) + bm(v));
+    hreg = (0.8882 - 1.04 * n);
+
+    dVdt = (i - gK * n.^4 .* (v - EK) - gNa * minf.^3 .*hreg .* (v - ENa) - gL * (v - EL)) / C ;
+end
+%% Iterate by V* PEQ potential
+close all
+
+Vp_space = linspace(-50, 30, 1000);
+
+% Let's indicate manually all equations 
+an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
+bn = @(V) 0.125 * exp(-V / 80);
+ninf = @(V) an(V)./(an(V)+bn(V));
+Dan =  @(V) (abs(V-10) < 1e-6) .* 0.01/2 + (abs(V-10) >= 1e-6) .* 0.01 .* exp(V/10).*( 10*exp(V/10) - exp(1)*V ) ./ (10 * (exp(1) - exp(V/10)).^2) ; 
+Dbn = @(V) -0.125/80 * exp(-V / 80);
+
+hreg = @(n) 0.8882 - 1.04 * n ;
+Dhreg = @(n) -1.04 + 0*n;
+
+am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 .* (25 - V) ./ (exp(2.5 - V / 10) - 1);
+bm = @(V) 4 * exp(-V / 18);
+minf = @(V) am(V)./(am(V)+bm(V));
+Dam =  @(V) (abs(V-25) < 1e-6) .* 0.1/2 + (abs(V-25) >= 1e-6) .* 0.1 .* exp(V/10).*( 10*exp(V/10) + exp(2.5)*(15-V) ) ./ ( 10*(exp(2.5) - exp(V/10)).^2 ) ; 
+Dbm = @(V) -4/18 * exp(-V / 18);
+Dminf = @(V) ( Dam(V).*bm(V) - am(V).*Dbm(V) ) ./ ((am(V)+bm(V)).^2);
+
+% check grafically the formules
+%figure
+%hold on; axis on; grid on; axis tight;
+%plot(Vp_space, Dminf(Vp_space), '-')
+%plot(Vp_space, (minf(Vp_space+1e-1) - minf(Vp_space-1e-1))/(2e-1), '-')
+%hold off;
+
+%% Calculate the intensity to V* be a critical value
+
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+igV = @(V) gK .* ninf(V).^4 .* (V-EK) + gNa .* minf(V).^3 .* hreg(ninf(V)) .* (V-ENa) + gL .* (V-EL);
+figure
+hold on; axis on; grid on; axis tight;
+plot(Vp_space, igV(Vp_space), '-')
+hold off;
+
+%% Calculate manually the entries of the jacobian at PEQ
+
+VdotV = @(V) ( -gK.*ninf(V).^4 -gNa.* 3.*minf(V).^2.*Dminf(V) .*hreg(ninf(V)).*(V-ENa) -gNa.*minf(V).^3.*hreg(ninf(V)) -gL )/C ;
+Vdotn = @(V) ( -gK.*4.*ninf(V).^3.*(V-EK) -gNa.*minf(V).^3.*Dhreg(ninf(V)).*(V-ENa)  )/C ;
+ndotV = @(V) ( Dan(V).*bn(V) + an(V).*Dbn(V) )./( an(V)+bn(V) ) ;
+ndotn = @(V) bn(V) - an(V) ;

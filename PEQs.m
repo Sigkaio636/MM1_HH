@@ -1,7 +1,7 @@
 close all
-I = 3.7;
+I = 0;
 
-V_space = linspace(-100, 100, 10000);
+V_space = linspace(0, 30, 10000);
 n_space = linspace(1e-4, 1 - 1e-4, 1000);
 
 an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
@@ -73,7 +73,8 @@ plot(n_space, V_isoclina, "DisplayName", "Isoclina dVdt = 0")
 plot(ninf(V_PEQ(end)), V_PEQ(end), "-o", "DisplayName", "PEQ")
 
 % Draw a trajectory
-xr0 = [50; 0.5; I]; % Initial state <- Play changing the intensity
+Vtest = 24.85;
+xr0 = [Vtest; ninf(Vtest); I]; % Initial state <- Play changing the intensity
 tspan = [0 50];
 [tr, xr] = ode45(@HHredu1, tspan, xr0); 
 plot(xr(:,2), xr(:,1), "-", "DisplayName", "Trajectory")
