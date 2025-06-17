@@ -48,7 +48,9 @@ function dVdt = HHredu1_V(x)
 end
 %% Iterate by V* PEQ potential
 
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
 Vp_space = linspace(-30, 30, 1000);
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
 
 % Let's indicate manually all equations 
 an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
@@ -160,6 +162,92 @@ plot( 0 .* Tr_space, Tr_space.^2 /4, 'k', DisplayName="Trace =0" )
 plot( Tr_space, 0 .* Tr_space.^2 /4, 'k', DisplayName="Determinant =0" )
 plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
 legend(Location='southeast')
+hold off;
+
+%% Phase plot and isoclines 
+
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+fix_Vp = 20;
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+fix_I = igV(fix_Vp);
+
+% for isocline V' as we perfom the substitution h ~ hreg 
+%   we can express V'=0 as a quartic equation An^4 = Pn +Q
+%   for coeffi in function in V
+
+A = @(V) gK.*(V-EK) ;
+Q = @(V) fix_I - gL.*(V-EL) - gNa.*minf(V).^3.*( hreg(1)-Dhreg(1) ).*(V-ENa) ;
+P = @(V) - gNa.*minf(V).^3.*Dhreg(1).*(V-ENa) ;
+
+n_space = linspace(1e-3, 1-1e-3, 1000);
+figure()
+hold on; axis on; grid on;
+plot(n_space, A(fix_Vp).*n_space.^4 - P(fix_Vp).*n_space - Q(fix_Vp))
+plot(n_space, n_space*0)
+plot(ninf(fix_Vp)+n_space*0, linspace(20, -20, 1000))
+xlabel("n")
+ylabel("Quartic for Vp")
+hold off;
+
+n_crit_list = [];
+A_list = [];
+V_crit_list = [];
+for Vidx = V_space
+    A_list = [A_list A(Vidx)];
+    n_crit = nthroot(P(Vidx)/A(Vidx)/4, 3);
+    n_crit_list = [n_crit_list n_crit];
+    V_crit = A(Vidx)*n_crit^4 - P(Vidx)*n_crit - Q(Vidx);
+    V_crit_list = [V_crit_list V_crit];
+end
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, n_crit_list )
+plot(V_space, V_space*0)
+xlabel("V")
+ylabel("n critical for quartic")
+hold off;
+
+V_test = -15;
+figure()
+hold on; axis on; grid on;
+plot(n_space, A(V_test).*n_space.^4 - P(V_test).*n_space - Q(V_test))
+plot(n_space, n_space*0)
+xlabel("n")
+ylabel("Quartic for certain V testing")
+hold off;
+Q(V_test)
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, sign(V_crit_list), DisplayName="V_critical sign", LineWidth=2)
+plot(V_space, sign(A_list), DisplayName="A_list sign", LineWidth=2)
+xlabel("V")
+legend()
+% Vemos que hay ocasiones donde ambos signos coinciden, mostrando que no
+%   existe insolina para esos valores de V
+VnullExist = xor(V_crit_list>0, A_list>0);
+plot(V_space, VnullExist, DisplayName="Is defined?")
+hold off;
+
+V_isocline = [];
+for indx = 1:length(V_space)
+    if VnullExist(indx) 
+        n_quartic = @(n) A(V_space(indx)).*n.^4 - P(V_space(indx)).*n - Q(V_space(indx));
+        [res, ~, it] = bisection(0, 1, 1e-8, 1e3, n_quartic);
+        V_isocline = [V_isocline res(end)];
+    else 
+        V_isocline = [V_isocline 0];
+    end 
+end
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, V_isocline, DisplayName="V'=0")
+plot(V_space, ninf(V_space), DisplayName="n'=0")
+xlabel("V")
+ylabel("n")
+legend()
 hold off;
 
 
