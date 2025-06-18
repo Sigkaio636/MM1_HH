@@ -3,7 +3,7 @@ an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./
 bn = @(V) 0.125 * exp(-V / 80);
 ninf = @(V) an(V)./(an(V)+bn(V));
 
-V_space = linspace(-50, 119, 10000);
+V_space = linspace(-50, 119, 20000);
 
 % El PEQ
 eq = @(V, I) HHredu1_V([V, ninf(V), I]);
@@ -120,9 +120,12 @@ plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
 legend(Location='southeast')
 hold off;
 
+EigVal1 = -TrJ(Vp_space)/2 + ( discM(Vp_space)/4 ).^(1/2);
+EigVal2 = -TrJ(Vp_space)/2 - ( discM(Vp_space)/4 ).^(1/2);
 figure()
 hold on; axis on; grid on;
-plot(Vp_space, ninf(Vp_space), DisplayName="PEQ evolution")
+plot(igV(Vp_space), real(EigVal1), color='k', DisplayName="real")
+plot(igV(Vp_space), real(EigVal2), color='k', DisplayName="PEQ evolution")
 legend(Location='southeast')
 hold off;
 
@@ -175,9 +178,13 @@ hold off;
 %% Phase plot and isoclines 
 
 % <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
-fix_Vp = 11;
+fix_Vp = 2.6365;
+%2.23565
 % <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
 fix_I = igV(fix_Vp);
+
+fix_jacobian = [ VdotV(fix_Vp) Vdotn(fix_Vp) ; ndotV(fix_Vp) ndotn(fix_Vp) ]
+eig(fix_jacobian)
 
 % for isocline V' as we perfom the substitution h ~ hreg 
 %   we can express V'=0 as a quartic equation An^4 = Pn +Q
@@ -250,10 +257,10 @@ for indx = 1:length(V_space)
 end
 
 % Draw a trajectory
-tspan = [0 50];
+tspan = [0 500];
 xr0 = [V_test; ninf(V_test); fix_I]; % Initial state <- Play changing the intensity
 [txr, xr] = ode45(@HHredu1, tspan, xr0); 
-yr0 = [40; 0.6; fix_I]; % Initial state <- Play changing the intensity
+yr0 = [-40; 0.6; fix_I]; % Initial state <- Play changing the intensity
 [tyr, yr] = ode45(@HHredu1, tspan, yr0); 
 
 figure()
@@ -261,10 +268,34 @@ hold on; axis on; grid on;
 plot(V_space, V_isocline, DisplayName="V'=0", LineWidth=2)
 plot(V_space, ninf(V_space), DisplayName="n'=0", LineWidth=2)
 plot(xr(:,1), xr(:,2), "-", "DisplayName", "Trajectory x")
-plot(xr(1,1), xr(1,2), "-o", "DisplayName", "Start trajectory x")
-plot(yr(:,1), yr(:,2), "-", "DisplayName", "Trajectory y")
-plot(yr(1,1), yr(1,2), "-o", "DisplayName", "Start trajectory y")
-plot(fix_Vp, ninf(fix_Vp), 'O', color='k', DisplayName="PEQ", LineWidth=3)
+%plot(xr(1,1), xr(1,2), "-o", "DisplayName", "Start trajectory x")
+%plot(yr(:,1), yr(:,2), "-", "DisplayName", "Trajectory y")
+%plot(yr(1,1), yr(1,2), "-o", "DisplayName", "Start trajectory y")
+plot(fix_Vp, ninf(fix_Vp), 'O', color='k', DisplayName="PEQ 0", LineWidth=3)
+
+search_PEQ_Vp = @(V)igV(V)-fix_I;
+if beginBranch_Vp <= fix_Vp && fix_Vp <= maxVp
+    [res, ~, ~] = bisection(maxVp, minVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(minVp, endBranch_Vp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+elseif maxVp <= fix_Vp && fix_Vp <= minVp
+    [res, ~, ~] = bisection(beginBranch_Vp, maxVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(minVp, endBranch_Vp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+elseif minVp <= fix_Vp && fix_Vp <= endBranch_Vp
+    [res, ~, ~] = bisection(beginBranch_Vp, maxVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(maxVp, minVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+end 
+
+if beginBranch_Vp <= fix_Vp && fix_Vp <= endBranch_Vp
+plot(PEQ1_Vp, ninf(PEQ1_Vp), 'x', color='k', DisplayName="PEQ 1", LineWidth=2)
+plot(PEQ2_Vp, ninf(PEQ2_Vp), 'x', color='k', DisplayName="PEQ 2", LineWidth=2)
+end
+
 xlabel("V")
 ylabel("n")
 legend()
