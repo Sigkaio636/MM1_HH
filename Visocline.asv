@@ -3,7 +3,7 @@ an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./
 bn = @(V) 0.125 * exp(-V / 80);
 ninf = @(V) an(V)./(an(V)+bn(V));
 
-V_space = linspace(-50, 50, 10000);
+V_space = linspace(-50, 119, 10000);
 
 % El PEQ
 eq = @(V, I) HHredu1_V([V, ninf(V), I]);
@@ -48,7 +48,9 @@ function dVdt = HHredu1_V(x)
 end
 %% Iterate by V* PEQ potential
 
-Vp_space = linspace(2, 2.9, 1000);
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+Vp_space = linspace(-30, 30, 1000);
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
 
 % Let's indicate manually all equations 
 an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
@@ -118,6 +120,12 @@ plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
 legend(Location='southeast')
 hold off;
 
+figure()
+hold on; axis on; grid on;
+plot(Vp_space, ninf(Vp_space), DisplayName="PEQ evolution")
+legend(Location='southeast')
+hold off;
+
 %% Search for different PEQs evolution
 
 DigV = @(V) (igV(V+1e-6)-igV(V-1e-6))/(2e-6);
@@ -159,12 +167,16 @@ plot(TrJ(maxVp), detJ(maxVp), 'ro', DisplayName="EndBranch double PEQ")
 plot( 0 .* Tr_space, Tr_space.^2 /4, 'k', DisplayName="Trace =0" )
 plot( Tr_space, 0 .* Tr_space.^2 /4, 'k', DisplayName="Determinant =0" )
 plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
+xlabel("V")
+ylabel("n")
 legend(Location='southeast')
 hold off;
 
 %% Phase plot and isoclines 
 
-fix_Vp = -20;
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+fix_Vp = 0;
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
 fix_I = igV(fix_Vp);
 
 % for isocline V' as we perfom the substitution h ~ hreg 
@@ -212,6 +224,7 @@ plot(n_space, n_space*0)
 xlabel("n")
 ylabel("Quartic for certain V testing")
 hold off;
+Q(V_test)
 
 figure()
 hold on; axis on; grid on;
@@ -227,8 +240,37 @@ hold off;
 
 V_isocline = [];
 for indx = 1:length(V_space)
-    if VnullExist[]
+    if VnullExist(indx) 
+        n_quartic = @(n) A(V_space(indx)).*n.^4 - P(V_space(indx)).*n - Q(V_space(indx));
+        [res, ~, it] = bisection(0, 1, 1e-8, 1e3, n_quartic);
+        V_isocline = [V_isocline res(end)];
+    else 
+        V_isocline = [V_isocline NaN];
+    end 
 end
+
+% Draw a trajectory
+tspan = [0 50];
+xr0 = [V_test; ninf(V_test); fix_I]; % Initial state <- Play changing the intensity
+[txr, xr] = ode45(@HHredu1, tspan, xr0); 
+yr0 = [40; 0.6; fix_I]; % Initial state <- Play changing the intensity
+[tyr, yr] = ode45(@HHredu1, tspan, yr0); 
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, V_isocline, DisplayName="V'=0", LineWidth=2)
+plot(V_space, ninf(V_space), DisplayName="n'=0", LineWidth=2)
+plot(xr(:,1), xr(:,2), "-", "DisplayName", "Trajectory x")
+plot(xr(1,1), xr(1,2), "-o", "DisplayName", "Start trajectory x")
+plot(yr(:,1), yr(:,2), "-", "DisplayName", "Trajectory y")
+plot(yr(1,1), yr(1,2), "-o", "DisplayName", "Start trajectory y")
+plot(fix_Vp, ninf(fix_Vp), 'x', color='k', DisplayName="PEQ", LineWidth=5)
+xlabel("V")
+ylabel("n")
+legend()
+hold off;
+
+
 
 
 function [xk, ek, it] = bisection(a, b, tol, itmax, f)
