@@ -1,0 +1,324 @@
+close all
+an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
+bn = @(V) 0.125 * exp(-V / 80);
+ninf = @(V) an(V)./(an(V)+bn(V));
+
+V_space = linspace(-50, 119, 20000);
+
+% El PEQ
+eq = @(V, I) HHredu1_V([V, ninf(V), I]);
+figure()
+hold on; axis on; 
+
+for i = -20:10:40
+    testcurve = [];
+    for v = V_space
+        testcurve = [testcurve eq(v, i)];
+    end
+    plot(V_space, testcurve, DisplayName=int2str(i))
+end
+plot(V_space, 0*testcurve, '--', DisplayName="zero")
+legend()
+hold off;
+
+function dVdt = HHredu1_V(x)
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+    am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 * (25 - V) ./ (exp(2.5 - V / 10) - 1);
+    bm = @(V) 4 * exp(-V / 18);
+
+    v = x(1);
+    n = x(2);
+    i = x(3);
+
+    % Hypothesis reduction. 
+    minf = am(v) ./ (am(v) + bm(v));
+    hreg = (0.8882 - 1.04 * n);
+
+    dVdt = (i - gK * n.^4 .* (v - EK) - gNa * minf.^3 .*hreg .* (v - ENa) - gL * (v - EL)) / C ;
+end
+%% Iterate by V* PEQ potential
+
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+Vp_space = linspace(-30, 30, 1000);
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+
+% Let's indicate manually all equations 
+an = @(V) (abs(V-10) < 1e-6) .* 0.1 + (abs(V-10) >= 1e-6) .* 0.01 .* (10 - V) ./ (exp(1 - V / 10) - 1);
+bn = @(V) 0.125 * exp(-V / 80);
+ninf = @(V) an(V)./(an(V)+bn(V));
+Dan =  @(V) (abs(V-10) < 1e-6) .* 0.01/2 + (abs(V-10) >= 1e-6) .* 0.01 .* exp(V/10).*( 10*exp(V/10) - exp(1)*V ) ./ (10 * (exp(1) - exp(V/10)).^2) ; 
+Dbn = @(V) -0.125/80 * exp(-V / 80);
+
+hreg = @(n) 0.8882 - 1.04 * n ;
+Dhreg = @(n) -1.04 + 0*n;
+
+am = @(V) (abs(V-25) < 1e-6) .* 1 + (abs(V-25) >= 1e-6) .* 0.1 .* (25 - V) ./ (exp(2.5 - V / 10) - 1);
+bm = @(V) 4 * exp(-V / 18);
+minf = @(V) am(V)./(am(V)+bm(V));
+Dam =  @(V) (abs(V-25) < 1e-6) .* 0.1/2 + (abs(V-25) >= 1e-6) .* 0.1 .* exp(V/10).*( 10*exp(V/10) + exp(2.5)*(15-V) ) ./ ( 10*(exp(2.5) - exp(V/10)).^2 ) ; 
+Dbm = @(V) -4/18 * exp(-V / 18);
+Dminf = @(V) ( Dam(V).*bm(V) - am(V).*Dbm(V) ) ./ ((am(V)+bm(V)).^2);
+
+% check grafically the formules
+%figure
+%hold on; axis on; grid on; axis tight;
+%plot(Vp_space, Dminf(Vp_space), '-')
+%plot(Vp_space, (minf(Vp_space+1e-1) - minf(Vp_space-1e-1))/(2e-1), '-')
+%hold off;
+
+%% Calculate the intensity to V* be a critical value
+
+    % Shifted Nernst equilibrium potentials at mV, supercritical Andronov-Hopf bifurcation
+    EK = -12;
+    ENa = 120;
+    EL = 10.6;
+    % Maximal conductances at mS/cm^2
+    gK = 36;
+    gNa = 120;
+    gL = 0.3;
+    % Membrane capacitance and currents
+    C = 1;  % µF/cm^2
+
+igV = @(V) gK .* ninf(V).^4 .* (V-EK) + gNa .* minf(V).^3 .* hreg(ninf(V)) .* (V-ENa) + gL .* (V-EL);
+figure
+hold on; axis on; grid on; axis tight;
+plot(Vp_space, igV(Vp_space), '-')
+xlabel("V*")
+ylabel("Intensity i for V*")
+hold off;
+
+%% Calculate manually the entries of the jacobian at PEQ
+
+VdotV = @(V) ( -gK.*ninf(V).^4 -gNa.* 3.*minf(V).^2.*Dminf(V) .*hreg(ninf(V)).*(V-ENa) -gNa.*minf(V).^3.*hreg(ninf(V)) -gL )/C ;
+Vdotn = @(V) ( -gK.*4.*ninf(V).^3.*(V-EK) -gNa.*minf(V).^3.*Dhreg(ninf(V)).*(V-ENa)  )/C ;
+ndotV = @(V) ( Dan(V).*bn(V) + an(V).*Dbn(V) )./( an(V)+bn(V) ) ;
+ndotn = @(V) bn(V) - an(V) ;
+
+TrJ = @(V) VdotV(V) + ndotn(V) ;
+detJ = @(V) VdotV(V).*ndotn(V) - Vdotn(V).*ndotV(V) ;
+discM = @(V) TrJ(V).^2 - 4.*detJ(V) ;
+
+figure()
+hold on; axis on; grid on;
+plot(TrJ(Vp_space), detJ(Vp_space), DisplayName="I evolution")
+Det_space = linspace( min(detJ(Vp_space)), max(detJ(Vp_space)), 100 );
+Tr_space = linspace( -2*sqrt(max(detJ(Vp_space))), 2*sqrt(max(detJ(Vp_space))), 100 );
+
+plot( 0 .* Tr_space, Tr_space.^2 /4, 'k', DisplayName="Trace =0" )
+plot( Tr_space, 0 .* Tr_space.^2 /4, 'k', DisplayName="Determinant =0" )
+plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
+legend(Location='southeast')
+hold off;
+
+EigVal1 = -TrJ(Vp_space)/2 + ( discM(Vp_space)/4 ).^(1/2);
+EigVal2 = -TrJ(Vp_space)/2 - ( discM(Vp_space)/4 ).^(1/2);
+figure()
+hold on; axis on; grid on;
+plot(igV(Vp_space), real(EigVal1), color='k', DisplayName="real")
+plot(igV(Vp_space), real(EigVal2), color='k', DisplayName="PEQ evolution")
+legend(Location='southeast')
+hold off;
+
+%% Search for different PEQs evolution
+
+DigV = @(V) (igV(V+1e-6)-igV(V-1e-6))/(2e-6);
+
+[res, ~, it] = bisection(14, 18, 1e-8, 1e3, DigV);
+it
+maxVp = res(end);
+[res, ~, it] = bisection(21, 24, 1e-8, 1e3, DigV);
+it
+minVp = res(end);
+
+minIbranch = igV(minVp); 
+maxIbranch = igV(maxVp);
+
+search_beginBranch_Vp = @(V)igV(V)-minIbranch;
+[res, ~, it] = bisection(10.5, 11.5, 1e-8, 1e3, search_beginBranch_Vp);
+it
+beginBranch_Vp = res(end);
+
+search_endBranch_Vp = @(V)igV(V)-maxIbranch;
+[res, ~, it] = bisection(25, 26, 1e-8, 1e3, search_endBranch_Vp);
+it
+endBranch_Vp = res(end);
+
+lowBranch_Vp_space = linspace(min(Vp_space), maxVp, 10000);
+midBranch_Vp_space = linspace(maxVp, minVp, 10000);
+higBranch_Vp_space = linspace(minVp, max(Vp_space), 10000);
+
+figure()
+hold on; axis on; grid on;
+plot(TrJ(lowBranch_Vp_space), detJ(lowBranch_Vp_space), DisplayName="lowBranch PEQ")
+plot(TrJ(midBranch_Vp_space), detJ(midBranch_Vp_space), DisplayName="midBranch PEQ")
+plot(TrJ(higBranch_Vp_space), detJ(higBranch_Vp_space), DisplayName="higBranch PEQ")
+plot(TrJ(beginBranch_Vp), detJ(beginBranch_Vp), 'gx', DisplayName="BeginBranch simple PEQ")
+plot(TrJ(minVp), detJ(minVp), 'go', DisplayName="BeginBranch double PEQ")
+plot(TrJ(endBranch_Vp), detJ(endBranch_Vp), 'rx', DisplayName="EndBranch simple PEQ")
+plot(TrJ(maxVp), detJ(maxVp), 'ro', DisplayName="EndBranch double PEQ")
+
+plot( 0 .* Tr_space, Tr_space.^2 /4, 'k', DisplayName="Trace =0" )
+plot( Tr_space, 0 .* Tr_space.^2 /4, 'k', DisplayName="Determinant =0" )
+plot( Tr_space, Tr_space.^2 /4, 'k', DisplayName="Discriminant=0" )
+xlabel("V")
+ylabel("n")
+legend(Location='southeast')
+hold off;
+
+%% Phase plot and isoclines 
+
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+fix_Vp = 2.6365;
+%2.23565
+% <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <> - <>
+fix_I = igV(fix_Vp);
+
+fix_jacobian = [ VdotV(fix_Vp) Vdotn(fix_Vp) ; ndotV(fix_Vp) ndotn(fix_Vp) ]
+eig(fix_jacobian)
+
+% for isocline V' as we perfom the substitution h ~ hreg 
+%   we can express V'=0 as a quartic equation An^4 = Pn +Q
+%   for coeffi in function in V
+
+A = @(V) gK.*(V-EK) ;
+Q = @(V) fix_I - gL.*(V-EL) - gNa.*minf(V).^3.*( hreg(1)-Dhreg(1) ).*(V-ENa) ;
+P = @(V) - gNa.*minf(V).^3.*Dhreg(1).*(V-ENa) ;
+
+n_space = linspace(1e-3, 1-1e-3, 1000);
+figure()
+hold on; axis on; grid on;
+plot(n_space, A(fix_Vp).*n_space.^4 - P(fix_Vp).*n_space - Q(fix_Vp))
+plot(n_space, n_space*0)
+plot(ninf(fix_Vp)+n_space*0, linspace(20, -20, 1000))
+xlabel("n")
+ylabel("Quartic for Vp")
+hold off;
+
+n_crit_list = [];
+A_list = [];
+V_crit_list = [];
+for Vidx = V_space
+    A_list = [A_list A(Vidx)];
+    n_crit = nthroot(P(Vidx)/A(Vidx)/4, 3);
+    n_crit_list = [n_crit_list n_crit];
+    V_crit = A(Vidx)*n_crit^4 - P(Vidx)*n_crit - Q(Vidx);
+    V_crit_list = [V_crit_list V_crit];
+end
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, n_crit_list )
+plot(V_space, V_space*0)
+xlabel("V")
+ylabel("n critical for quartic")
+hold off;
+
+V_test = -15;
+figure()
+hold on; axis on; grid on;
+plot(n_space, A(V_test).*n_space.^4 - P(V_test).*n_space - Q(V_test))
+plot(n_space, n_space*0)
+xlabel("n")
+ylabel("Quartic for certain V testing")
+hold off;
+Q(V_test)
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, sign(V_crit_list), DisplayName="V_critical sign", LineWidth=2)
+plot(V_space, sign(A_list), DisplayName="A_list sign", LineWidth=2)
+xlabel("V")
+legend()
+% Vemos que hay ocasiones donde ambos signos coinciden, mostrando que no
+%   existe insolina para esos valores de V
+VnullExist = xor(V_crit_list>0, A_list>0);
+plot(V_space, VnullExist, DisplayName="Is defined?")
+hold off;
+
+V_isocline = [];
+for indx = 1:length(V_space)
+    if VnullExist(indx) 
+        n_quartic = @(n) A(V_space(indx)).*n.^4 - P(V_space(indx)).*n - Q(V_space(indx));
+        [res, ~, it] = bisection(0, 1, 1e-8, 1e3, n_quartic);
+        V_isocline = [V_isocline res(end)];
+    else 
+        V_isocline = [V_isocline NaN];
+    end 
+end
+
+% Draw a trajectory
+tspan = [0 500];
+xr0 = [V_test; ninf(V_test); fix_I]; % Initial state <- Play changing the intensity
+[txr, xr] = ode45(@HHredu1, tspan, xr0); 
+yr0 = [-40; 0.6; fix_I]; % Initial state <- Play changing the intensity
+[tyr, yr] = ode45(@HHredu1, tspan, yr0); 
+
+figure()
+hold on; axis on; grid on;
+plot(V_space, V_isocline, DisplayName="V'=0", LineWidth=2)
+plot(V_space, ninf(V_space), DisplayName="n'=0", LineWidth=2)
+plot(xr(:,1), xr(:,2), "-", "DisplayName", "Trajectory x")
+%plot(xr(1,1), xr(1,2), "-o", "DisplayName", "Start trajectory x")
+%plot(yr(:,1), yr(:,2), "-", "DisplayName", "Trajectory y")
+%plot(yr(1,1), yr(1,2), "-o", "DisplayName", "Start trajectory y")
+plot(fix_Vp, ninf(fix_Vp), 'O', color='k', DisplayName="PEQ 0", LineWidth=3)
+
+search_PEQ_Vp = @(V)igV(V)-fix_I;
+if beginBranch_Vp <= fix_Vp && fix_Vp <= maxVp
+    [res, ~, ~] = bisection(maxVp, minVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(minVp, endBranch_Vp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+elseif maxVp <= fix_Vp && fix_Vp <= minVp
+    [res, ~, ~] = bisection(beginBranch_Vp, maxVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(minVp, endBranch_Vp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+elseif minVp <= fix_Vp && fix_Vp <= endBranch_Vp
+    [res, ~, ~] = bisection(beginBranch_Vp, maxVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ1_Vp = res(end);
+    [res, ~, ~] = bisection(maxVp, minVp, 1e-8, 1e3, search_PEQ_Vp);
+    PEQ2_Vp = res(end);
+end 
+
+if beginBranch_Vp <= fix_Vp && fix_Vp <= endBranch_Vp
+plot(PEQ1_Vp, ninf(PEQ1_Vp), 'x', color='k', DisplayName="PEQ 1", LineWidth=2)
+plot(PEQ2_Vp, ninf(PEQ2_Vp), 'x', color='k', DisplayName="PEQ 2", LineWidth=2)
+end
+
+xlabel("V")
+ylabel("n")
+legend()
+hold off;
+
+
+
+
+function [xk, ek, it] = bisection(a, b, tol, itmax, f)
+    it = 0;
+    tolk = Inf;
+    xk = (a + b) ./ 2;
+
+    while it < itmax && tolk >= tol
+        if f(a) * f(xk(end)) < 0
+            b = xk(end);
+        else
+            a = xk(end);
+        end
+        xk = [xk (a + b) ./ 2];
+        tolk = abs(xk(end) - xk(end-1));
+        it = it + 1;
+    end
+
+    ek = xk(1:end - 1) - xk(end);
+end
